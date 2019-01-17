@@ -15,10 +15,44 @@ import traceback
 import re
 import datetime
 import csv
+from threading import Thread
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 coords_my_position = (54.36441, 9.82202)
 UDP_IP_ADDRESS = "127.0.0.1"
 UDP_PORT_NO = 2947
+PORT_NUMBER = 9999
+
+class my_handler(BaseHTTPRequestHandler):
+
+   def set_ais_decoder(self, ais_decoder):
+       self.ais_decoder = ais_decoder
+
+   #Handler for the GET requests
+   def do_GET(self):
+      if( self.path == '/data.json' ):
+        self.send_response(200)
+        self.send_header('Content-type','application/json')
+        self.end_headers()
+        self.wfile.write(str(ais_decoder.ship_table).encode())
+      else:
+          self.send_response(404)
+          self.end_headers()
+
+      return
+
+class WebServer(Thread):
+    def __init__(self, ais_decoder):
+       ''' Constructor. '''
+
+       Thread.__init__(self)
+       self.ais_decoder = ais_decoder
+
+    def run(self):
+       server = HTTPServer(('', PORT_NUMBER), my_handler)
+       print ('Started httpserver on port ' , PORT_NUMBER)
+
+       server.serve_forever()
 
 class AisDecoder:
 
@@ -75,7 +109,8 @@ class AisDecoder:
   def recv_over_socket(self):
     serverSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     serverSock.bind((UDP_IP_ADDRESS, UDP_PORT_NO))
- 
+    print('Ready to receive AIS messages via UDP port %d' % UDP_PORT_NO)
+
     buf = ""
     while True:
         for data in self.readlines(serverSock):
@@ -173,8 +208,7 @@ class AisDecoder:
     
     if msg_type == 1 or msg_type == 3:
        # Only messages with id == 1 contain information about position and speed
-       if True:
-#       if '211457860' != mmsi:
+       if '211457860' != mmsi and '211274960' != mmsi:
         coords_ship = (msg['y'],msg['x'])
         distance = geopy.distance.great_circle(coords_ship, coords_my_position).m
         bearing = self.get_bearing(coords_ship, coords_my_position)
@@ -253,12 +287,22 @@ class AisDecoder:
      name = re.sub(r" +$", "", name)
      
      country = self.mid_list[mmsi[:3]]
-     print ("MMSI = %s" % mmsi)
-     print ("Name = %s" % name)
-     print ("Country = %s" % country)
+     self.ships[mmsi]['country'] = country
+     self.ships[mmsi]['length'] =  int(msg['dim_a']) + int(msg['dim_b'])
+     self.ships[mmsi]['width'] =  int(msg['dim_c']) + int(msg['dim_d'])
+     self.ships[mmsi]['draught'] =  msg['draught']
      self.ships[mmsi]['name'] = name
-     self.ships[mmsi]['type'] = self.ship_types[str(msg['type_and_cargo'])]
-     print ("Type = %s" % self.ships[mmsi]['type'])
+     if  msg['type_and_cargo']:
+        self.ships[mmsi]['type'] = self.ship_types[str(msg['type_and_cargo'])]
+     else:
+         self.ships[mmsi]['type'] = 'Unknown'
+     print( self.ships[mmsi] )
 
-AisDecoder().recv_over_socket()
+if __name__ == '__main__':
+    ais_decoder = AisDecoder()
+    web_server = WebServer(ais_decoder)
+    web_server.start()
+    ais_decoder.recv_over_socket()
+
+
 
