@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css"
+          integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous"/>
+    <title>Schiffe auf dem Kanal</title>
+    <style>.fill {
+        min-height: 100%;
+        height: 100%;
+    }
+
+    .half {
+        height: 50%; min-height:50%;
+    }
+
+    html, body {
+        height: 100%;
+    }</style>
+</head>
+<body>
+<div class="container-fluid fill">
+    <div class="row half" >
+        <div class="col">
+            <div class="container" id="display1">
+                <div class="row">
+                    <div class="col-12">
+                        <h1>von Kiel</h1>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        <div class="col">
+            <div class="container" id="display2">
+                <div class="row">
+                    <div class="col-12">
+                        <h1>von Rendsburg</h1>
+                    </div>
+                </div>
+                <div class="row ship">
+                    <div class="col-4"></div>
+                    <div class="col-4"></div>
+                    <div class="col-4"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row half" >
+        <div class="col">
+            <div class="container" id="display3">
+                <div class="row">
+                    <div class="col-12">
+                        <h1>nach Kiel</h1>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="container" id="display4">
+                <div class="row">
+                    <div class="col-12">
+                        <h1>nach Rendsburg</h1>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Optional JavaScript -->
+<!-- jQuery first, then Popper.js, then Bootstrap JS -->
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js"
+        integrity="sha384-wHAiFfRlMFy6i5SRaxvfOCifBUQy1xHdJ/yoi7FRNXMRBu5WHdZYu1hA6ZOblgut"
+        crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js"
+        integrity="sha384-B0UglyR+jN6CkvvICOB2joaf5I4l3gm9GU6Hc1og6Ls7i6U/mkkaduKaBhlAXv9k"
+        crossorigin="anonymous"></script>
+
+<script>
+
+    /** Sortiert ein Array nach der Eigenschaft seconds_to_arrival. */
+    function orderByArrival(a,b) {
+        if (a['seconds_to_arrival'] > b['seconds_to_arrival']) return 1;
+        if (b['seconds_to_arrival'] < a['seconds_to_arrival']) return -1;
+        return 0;
+    }
+    function displayShipTable(containerId, ships) {
+        const container = $(containerId);
+        for (var row of  container.find('div.ship')) {
+            row.remove();
+        }
+
+        ships.sort(orderByArrival);
+
+        for( var ship of ships) {
+            container.append('<div class="row ship">\n' +
+                '                    <div class="col-1"><img class="img-fluid" src="flags/'+ship.country.trim()+'.png" title="'+ship.country+'" alt="'+ship.country+'"/></div>\n' +
+                '                    <div class="col-4"><b>'+ship.name+'</b><br/>'+ship.type+'</div>\n' +
+                '                    <div class="col-4">'+ship.length+' m<br/>'+Math.round(ship.speed)+' km/h</div>\n' +
+                '                    <div class="col-3">'+Math.round(ship['seconds_to_arrival'])+'</div>\n' +
+                '                </div>');
+        }
+
+
+    }
+
+    function displayData() {
+        $.getJSON("http://localhost:9999/data.json", function (data) {
+            displayShipTable('#display1',data['from_kiel']);
+            displayShipTable('#display2',data['from_rendsburg']);
+            displayShipTable('#display3',data['to_kiel']);
+            displayShipTable('#display4',data['to_rendsburg']);
+        });
+    }
+
+
+    $(document).ready(function () {
+        displayData()
+        setInterval( displayData,5000);
+    });
+</script>
+</body>
+</html>
