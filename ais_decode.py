@@ -18,6 +18,8 @@ import time
 import traceback
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
+from os import curdir, sep, path
+import mimetypes
 
 import geopy.distance
 import numpy as np
@@ -60,10 +62,23 @@ class MyHandler(BaseHTTPRequestHandler):
             self.wfile.write(b'], "to_rendsburg":[\n')
             self.write_ships(self.wfile, ais_decoder.current_ships.values(), 'east -> west', 'leaving')
             self.wfile.write(b']}\n')
-
-        else:
-            self.send_response(404)
+        elif self.path == '/':
+            f = open(curdir + sep + 'index.html', 'rb')
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html')
             self.end_headers()
+            self.wfile.write(f.read())
+            f.close()
+        else:
+            if path.isfile(curdir + sep + self.path) :
+                f = open(curdir + sep + self.path, 'rb')
+                self.send_response(200)
+                self.send_header('Content-type', mimetypes.guess_type( self.path )[0])
+                self.end_headers()
+                self.wfile.write(f.read())
+            else:
+                self.send_response(404)
+                self.end_headers()
 
         return
 
@@ -302,6 +317,7 @@ class AisDecoder:
             self.ships[mmsi]['type'] = 'Unknown'
 
 if __name__ == '__main__':
+    mimetypes.init()
     ais_decoder = AisDecoder()
     web_server = WebServer(ais_decoder)
     web_server.start()
